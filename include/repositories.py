@@ -171,12 +171,12 @@ class FirebaseRepository:
 
 class MinioRepository:
 
-    def __init__(self, conn_type: str, host: str, login: str, password: str):
+    def __init__(self, host: str, access_key: str, secret_key: str):
         self.minio_client = Minio(
-            conn_type,
             host,
-            login,
-            password
+            access_key=access_key,
+            secret_key=secret_key,
+        secure = False,
         )
 
     def save_images(self, material: Material, image: Image, image_data: io.BytesIO):

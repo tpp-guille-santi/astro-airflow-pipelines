@@ -5,6 +5,7 @@ from datetime import timedelta
 
 from airflow.decorators import dag
 
+from include.custom_task_groups.create_bucket import CreateBucket
 from include.repositories import BackendRepository
 from include.repositories import MinioRepository
 from include.repositories import TelegramRepository
@@ -17,7 +18,7 @@ default_args = {
     'start_date': datetime(2023, 1, 1),
     'email_on_failure': False,
     'email_on_retry': False,
-    'retries': 1,
+    'retries': 0,
     'retry_delay': timedelta(minutes=5),
 }
 
@@ -37,13 +38,15 @@ def train_model():
         chat_id=settings.TELEGRAM_CHAT_ID,
     )
     minio_repository = MinioRepository(
-        conn_type=settings.MINIO_CONN_TYPE,
         host=settings.MINIO_HOST,
-        login=settings.MINIO_LOGIN,
-        password=settings.MINIO_PASSWORD,
+        access_key=settings.MINIO_ACCESS_KEY,
+        secret_key=settings.MINIO_SECRET_KEY,
+    )
+    create_bucket_tg = CreateBucket(
+        task_id="create_images_bucket", bucket_name='images'
     )
 
-    download_new_images(backend_repository, minio_repository)
+    create_bucket_tg >> download_new_images(backend_repository, minio_repository)
 
 
 train_model()
