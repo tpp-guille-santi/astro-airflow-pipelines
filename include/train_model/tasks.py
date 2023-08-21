@@ -1,4 +1,3 @@
-import io
 import logging
 
 from airflow.decorators import task
@@ -12,7 +11,8 @@ from include.settings import settings
 LOGGER = logging.getLogger(__name__)
 
 
-def images_over_threshold(backend_repository: BackendRepository) -> bool:
+@task.short_circuit
+def images_over_threshold(backend_repository: BackendRepository):
     images_count = backend_repository.get_new_images_count()
     return images_count > settings.MODEL_RETRAIN_THRESHOLD
 

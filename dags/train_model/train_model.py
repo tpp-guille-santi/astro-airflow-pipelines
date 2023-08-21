@@ -11,6 +11,7 @@ from include.repositories import MinioRepository
 from include.repositories import TelegramRepository
 from include.settings import settings
 from include.train_model.tasks import download_new_images
+from include.train_model.tasks import images_over_threshold
 
 default_args = {
     'owner': 'Santiago Gandolfo',
@@ -46,7 +47,8 @@ def train_model():
         task_id="create_images_bucket", bucket_name='images'
     )
 
-    create_bucket_tg >> download_new_images(backend_repository, minio_repository)
+    images_over_threshold(backend_repository) >> create_bucket_tg >> download_new_images(
+        backend_repository, minio_repository)
 
 
 train_model()
