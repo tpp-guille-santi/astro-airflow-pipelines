@@ -12,6 +12,11 @@ from include.repositories import TelegramRepository
 from include.settings import settings
 from include.train_model.tasks import download_new_images
 from include.train_model.tasks import images_over_threshold
+from include.train_model.tasks import process_images
+from include.train_model.tasks import create_model
+from include.train_model.tasks import validate_model
+from include.train_model.tasks import transform_model
+from include.train_model.tasks import upload_model
 
 default_args = {
     'owner': 'Santiago Gandolfo',
@@ -48,7 +53,8 @@ def train_model():
     )
 
     images_over_threshold(backend_repository) >> create_bucket_tg >> download_new_images(
-        backend_repository, minio_repository)
+        backend_repository, minio_repository) >> process_images() >> create_model(            
+        ) >> validate_model() >> transform_model() >> upload_model()
 
 
 train_model()

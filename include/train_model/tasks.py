@@ -34,7 +34,25 @@ def download_new_images(backend_repository: BackendRepository,
 
             # backend_repository.mark_image_as_downloaded(image)
 
+@task()
+def process_images():
+    print("Dud task")
 
+@task()
+def create_model():
+    print("Dud task")
+
+@task()
+def validate_model():
+    print("Dud task")
+
+@task()
+def transform_model():
+    print("Dud task")        
+
+@task()
+def upload_model():
+    print("Dud task")    
 #
 # def upload_model(model, model_accuracy: float):
 #     print('Uploading Model')
