@@ -10,6 +10,8 @@ from firebase_admin import credentials
 from firebase_admin import ml
 from tensorflow import keras
 
+from PIL import Image as pil
+
 from include.entities import Image
 from include.entities import ImagesCountResponse
 from include.entities import MLModel
@@ -191,11 +193,11 @@ class MinioRepository:
     def prepare_minio_dataset(self, subset):
         images = []
         labels = []
-        for obj in self.minio_client.list_objects('images', prefix=subset):
+        for obj in self.minio_client.list_objects('images', recursive= True):
             label = obj.object_name.split('/')[-2]
             labels.append(label)
             data = self.minio_client.get_object('images', obj.object_name).read()
-            img = Image.open(io.BytesIO(data))
+            img = pil.open(io.BytesIO(data))
             img = img.resize((settings.IMG_HEIGHT, settings.IMG_WIDTH))
             img = np.array(img)
             images.append(img)

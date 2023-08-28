@@ -4,7 +4,7 @@ import tensorflow
 from tensorflow import keras
 
 from include.repositories import MinioRepository
-from settings import settings
+from include.settings import settings
 
 
 def prepare_dataset(data_dir, subset):
@@ -18,11 +18,11 @@ def prepare_dataset(data_dir, subset):
         image_size=(settings.IMG_HEIGHT, settings.IMG_WIDTH),
     )
 
-
-def train_and_evaluate_model(minio_repository: MinioRepository) -> tuple[keras.Model, float]:
+#TODO: Return -> tuple[keras.Model, float]
+def train_and_evaluate_model(minio_repository: MinioRepository):
     train_dataset = minio_repository.prepare_minio_dataset('training')
     validation_dataset = minio_repository.prepare_minio_dataset('validation')
-
+'''
     num_classes = len(train_dataset.class_names)
 
     val_batches = tensorflow.data.experimental.cardinality(validation_dataset)
@@ -97,6 +97,7 @@ def train_and_evaluate_model(minio_repository: MinioRepository) -> tuple[keras.M
     test_loss, test_accuracy = model.evaluate(test_dataset)
 
     return model, test_accuracy
+    '''
 
 
 # TODO:

@@ -7,6 +7,7 @@ from include.entities import Material
 from include.repositories import BackendRepository
 from include.repositories import MinioRepository
 from include.settings import settings
+from include.model import train_and_evaluate_model
 
 LOGGER = logging.getLogger(__name__)
 
@@ -39,8 +40,8 @@ def process_images():
     print("Dud task")
 
 @task()
-def create_model():
-    print("Dud task")
+def create_model(minio_repository):    
+    train_and_evaluate_model(minio_repository)
 
 @task()
 def validate_model():
