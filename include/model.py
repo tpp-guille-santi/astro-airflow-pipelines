@@ -1,4 +1,5 @@
 import pathlib
+import numpy as np
 
 import tensorflow
 from tensorflow import keras
@@ -20,27 +21,27 @@ def prepare_dataset(data_dir, subset):
 
 #TODO: Return -> tuple[keras.Model, float]
 def train_and_evaluate_model(minio_repository: MinioRepository):
-    train_dataset = minio_repository.prepare_minio_dataset('training')
-    validation_dataset = minio_repository.prepare_minio_dataset('validation')
-'''
-    num_classes = len(train_dataset.class_names)
+    complete_dataset = minio_repository.prepare_minio_dataset('training')
+    
+    # Extract unique classes from labels
+    unique_classes = np.unique(np.concatenate(list(complete_dataset.map(lambda x, y: y))))
+    num_classes = len(unique_classes)
 
-    val_batches = tensorflow.data.experimental.cardinality(validation_dataset)
-    test_dataset = validation_dataset.take(val_batches // 5)
-    validation_dataset = validation_dataset.skip(val_batches // 5)
+    #Divide the dataset in 3 parts
+    train_dataset, validation_dataset, test_dataset = divide_dataset(complete_dataset)
+    print("Dataset divided")
 
     train_dataset = train_dataset.prefetch(buffer_size=tensorflow.data.AUTOTUNE)
     validation_dataset = validation_dataset.prefetch(buffer_size=tensorflow.data.AUTOTUNE)
     test_dataset = test_dataset.prefetch(buffer_size=tensorflow.data.AUTOTUNE)
-
+    print("Preparing base model")
     # Create the base model from the pre-trained model MobileNet V2
     img_shape = (settings.IMG_HEIGHT, settings.IMG_WIDTH) + (3,)
     base_model = tensorflow.keras.applications.MobileNetV2(
         input_shape=img_shape, include_top=False, weights='imagenet'
     )
-
     base_model.trainable = False
-
+    print("Starting pre process")
     data_augmentation = tensorflow.keras.Sequential(
         [
             tensorflow.keras.layers.RandomFlip(
@@ -97,7 +98,7 @@ def train_and_evaluate_model(minio_repository: MinioRepository):
     test_loss, test_accuracy = model.evaluate(test_dataset)
 
     return model, test_accuracy
-    '''
+    
 
 
 # TODO:
@@ -111,3 +112,18 @@ def load_and_evaluate_model():
     model = tensorflow.keras.models.load_model(settings.TRAINED_MODEL_PATH)
     test_loss, test_accuracy = model.evaluate(test_dataset)
     return model, test_accuracy
+
+def divide_dataset(dataset):
+    # Shuffle the dataset
+    shuffled_dataset = dataset.shuffle(buffer_size=1000)
+
+    # Determine the sizes of training, validation, and test sets
+    train_size = int(0.7 * len(dataset))
+    val_size = int(0.2 * len(dataset))
+    test_size = len(dataset) - train_size - val_size
+
+    # Divide the dataset into training, validation, and test sets
+    train_dataset = shuffled_dataset.take(train_size)
+    val_dataset = shuffled_dataset.skip(train_size).take(val_size)
+    test_dataset = shuffled_dataset.skip(train_size + val_size).take(test_size)
+    return train_dataset, val_dataset, test_dataset
