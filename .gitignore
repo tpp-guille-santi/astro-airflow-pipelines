@@ -13,3 +13,4 @@ include/minio
 env/
 venv/
 .env
+/dags/upload_images_to_minio/directory/

@@ -6,11 +6,10 @@ import firebase_admin
 import httpx
 import numpy as np
 import tensorflow
+from PIL import Image as pil
 from firebase_admin import credentials
 from firebase_admin import ml
 from tensorflow import keras
-
-from PIL import Image as pil
 
 from include.entities import Image
 from include.entities import ImagesCountResponse
@@ -190,19 +189,48 @@ class MinioRepository:
                                      data=image_data, length=image_data.getbuffer().nbytes)
         print(f"Uploaded {object_key} to MinIO bucket.")
 
+    def save_images_from_file(self, object_key: str, image_path: str):
+        self.minio_client.fput_object(bucket_name='images', object_name=object_key,
+                                      file_path=image_path)
+        print(f"Uploaded {object_key} to MinIO bucket.")
+
     def prepare_minio_dataset(self, subset):
         images = []
         labels = []
-        for obj in self.minio_client.list_objects('images', recursive= True):
-            label = obj.object_name.split('/')[-2]
+        objects = self.minio_client.list_objects('images', recursive=True)
+
+        # Sort the objects by their names.
+        objects = sorted(objects, key=lambda obj: obj.object_name)
+
+        # Create a mapping of subfolder names to labels based on their order.
+        label_mapping = {}
+        label_counter = 0
+
+        for obj in objects:
+            # Split the object's key into parts using '/' as separator.
+            subfolder_name = obj.object_name.split('/')[-2]
+
+            # If the subfolder name is not in the label_mapping, add it with a label.
+            if subfolder_name not in label_mapping:
+                label_mapping[subfolder_name] = label_counter
+                label_counter += 1
+
+            # Assign the label based on the label_mapping.
+            label = label_mapping[subfolder_name]
             labels.append(label)
+
             data = self.minio_client.get_object('images', obj.object_name).read()
             img = pil.open(io.BytesIO(data))
             img = img.resize((settings.IMG_HEIGHT, settings.IMG_WIDTH))
             img = np.array(img)
             images.append(img)
+
         images = np.array(images)
         labels = np.array(labels)
+        print('images')
+        print(images)
+        print('labels')
+        print(labels)
         dataset = tensorflow.data.Dataset.from_tensor_slices((images, labels))
         dataset = dataset.batch(settings.BATCH_SIZE)
         return dataset
