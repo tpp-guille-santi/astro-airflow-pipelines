@@ -38,8 +38,9 @@ def train_and_evaluate_model(minio_repository: MinioRepository):
     # Create the base model from the pre-trained model MobileNet V2
     img_shape = (settings.IMG_HEIGHT, settings.IMG_WIDTH) + (3,)
     base_model = tensorflow.keras.applications.MobileNetV2(
-        input_shape=img_shape, include_top=False, weights='imagenet'
+        input_shape=img_shape, include_top=False, weights=None
     )
+    base_model.load_weights("./directory/mobilenet_v2_weights_tf_dim_ordering_tf_kernels_1.0_224_no_top.h5")
     base_model.trainable = False
     print("Starting pre process")
     data_augmentation = tensorflow.keras.Sequential(
