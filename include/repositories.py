@@ -1,17 +1,22 @@
+import io
 import json
 import logging
-from collections.abc import Iterator
 
 import firebase_admin
 import httpx
+import numpy as np
+import tensorflow
+from PIL import Image as pil
 from firebase_admin import credentials
 from firebase_admin import ml
 from tensorflow import keras
 
 from include.entities import Image
 from include.entities import ImagesCountResponse
-from include.entities import Material
 from include.entities import MLModel
+from include.entities import Material
+from include.settings import settings
+from minio import Minio
 
 LOGGER = logging.getLogger(__name__)
 
@@ -91,11 +96,14 @@ class BackendRepository:
             else:
                 response.raise_for_status()
 
-    def download_image(self, image: Image) -> Iterator[bytes]:
+    def download_image(self, image: Image) -> io.BytesIO:
         with httpx.Client() as client:
-            response = client.get(f'{self.base_url}/images/file/{image.filename}/')
+            url = f'{self.base_url}/images/file/{image.filename}/'
+            print(url)
+            response = client.get(url)
             if response.status_code == 200:
-                return response.iter_bytes()
+                image_data = response.content
+                return io.BytesIO(image_data)
             else:
                 response.raise_for_status()
 
@@ -163,3 +171,66 @@ class FirebaseRepository:
             model_source=ml.TFLiteGCSModelSource.from_keras_model(model)
         )
         ml.update_model(existing_model)
+
+
+class MinioRepository:
+
+    def __init__(self, host: str, access_key: str, secret_key: str):
+        self.minio_client = Minio(
+            host,
+            access_key=access_key,
+            secret_key=secret_key,
+            secure=False,
+        )
+
+    def save_images(self, material: Material, image: Image, image_data: io.BytesIO):
+        object_key = f'{material.order:02}-{material.name}/{image.filename}'
+        self.minio_client.put_object(bucket_name='images', object_name=object_key,
+                                     data=image_data, length=image_data.getbuffer().nbytes)
+        print(f"Uploaded {object_key} to MinIO bucket.")
+
+    def save_images_from_file(self, object_key: str, image_path: str):
+        self.minio_client.fput_object(bucket_name='images', object_name=object_key,
+                                      file_path=image_path)
+        print(f"Uploaded {object_key} to MinIO bucket.")
+
+    def prepare_minio_dataset(self, subset):
+        images = []
+        labels = []
+        objects = self.minio_client.list_objects('images', recursive=True)
+
+        # Sort the objects by their names.
+        objects = sorted(objects, key=lambda obj: obj.object_name)
+
+        # Create a mapping of subfolder names to labels based on their order.
+        label_mapping = {}
+        label_counter = 0
+
+        for obj in objects:
+            # Split the object's key into parts using '/' as separator.
+            subfolder_name = obj.object_name.split('/')[-2]
+
+            # If the subfolder name is not in the label_mapping, add it with a label.
+            if subfolder_name not in label_mapping:
+                label_mapping[subfolder_name] = label_counter
+                label_counter += 1
+
+            # Assign the label based on the label_mapping.
+            label = label_mapping[subfolder_name]
+            labels.append(label)
+
+            data = self.minio_client.get_object('images', obj.object_name).read()
+            img = pil.open(io.BytesIO(data))
+            img = img.resize((settings.IMG_HEIGHT, settings.IMG_WIDTH))
+            img = np.array(img)
+            images.append(img)
+
+        images = np.array(images)
+        labels = np.array(labels)
+        print('images')
+        print(images)
+        print('labels')
+        print(labels)
+        dataset = tensorflow.data.Dataset.from_tensor_slices((images, labels))
+        dataset = dataset.batch(settings.BATCH_SIZE)
+        return dataset

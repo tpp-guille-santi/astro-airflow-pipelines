@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     FIREBASE_CREDENTIALS: str
     FIREBASE_STORAGE_BUCKET: str
 
+    MINIO_HOST: str
+    MINIO_ACCESS_KEY: str
+    MINIO_SECRET_KEY: str
+
     class Config:
         env_file = '.env'
         env_file_encoding = 'utf-8'

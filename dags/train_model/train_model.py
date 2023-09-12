@@ -4,7 +4,19 @@ from datetime import datetime
 from datetime import timedelta
 
 from airflow.decorators import dag
-from airflow.decorators import task
+
+from include.custom_task_groups.create_bucket import CreateBucket
+from include.repositories import BackendRepository
+from include.repositories import MinioRepository
+from include.repositories import TelegramRepository
+from include.settings import settings
+from include.train_model.tasks import download_new_images
+from include.train_model.tasks import images_over_threshold
+from include.train_model.tasks import process_images
+from include.train_model.tasks import create_model
+from include.train_model.tasks import validate_model
+from include.train_model.tasks import transform_model
+from include.train_model.tasks import upload_model
 
 default_args = {
     'owner': 'Santiago Gandolfo',
@@ -12,7 +24,7 @@ default_args = {
     'start_date': datetime(2023, 1, 1),
     'email_on_failure': False,
     'email_on_retry': False,
-    'retries': 1,
+    'retries': 0,
     'retry_delay': timedelta(minutes=5),
 }
 
@@ -25,15 +37,24 @@ default_args = {
     max_active_runs=1,
 )
 def train_model():
-    @task
-    def test_1():
-        print("Hello test_1")
+    backend_repository = BackendRepository(base_url=settings.BACKEND_URL)
+    telegram_repository = TelegramRepository(
+        base_url=settings.TELEGRAM_URL,
+        token=settings.TELEGRAM_TOKEN,
+        chat_id=settings.TELEGRAM_CHAT_ID,
+    )
+    minio_repository = MinioRepository(
+        host=settings.MINIO_HOST,
+        access_key=settings.MINIO_ACCESS_KEY,
+        secret_key=settings.MINIO_SECRET_KEY,
+    )
+    create_bucket_tg = CreateBucket(
+        task_id="create_images_bucket", bucket_name='images'
+    )
 
-    @task
-    def test_2():
-        print("Hello test_1")
-
-    test_1() >> test_2()
+    images_over_threshold(backend_repository) >> create_bucket_tg >> download_new_images(
+        backend_repository, minio_repository) >> process_images() >> create_model(minio_repository           
+        ) >> validate_model() >> transform_model() >> upload_model()
 
 
 train_model()
