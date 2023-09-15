@@ -41,11 +41,12 @@ def process_images():
 
 @task()
 def create_model(minio_repository):    
-    train_and_evaluate_model(minio_repository)
+    model, accuracy = train_and_evaluate_model(minio_repository)
+    return accuracy
 
-@task()
-def validate_model():
-    print("Dud task")
+def validate_model(ti):
+    value = ti.xcom_pull(key="return_value", task_ids="create_model")
+    print("Hola!", value)
 
 @task()
 def transform_model():
