@@ -56,7 +56,7 @@ def train_model():
 
     images_over_threshold(backend_repository) >> create_bucket_tg >> download_new_images(
         backend_repository, minio_repository) >> process_images() >> create_model(minio_repository           
-        ) >> validate_model_task(backend_repository) >> transform_model() >> upload_model()
+        ) >> validate_model(backend_repository) >> transform_model() >> upload_model()
 
 
 train_model()
