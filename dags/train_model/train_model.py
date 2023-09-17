@@ -53,13 +53,10 @@ def train_model():
         task_id="create_images_bucket", bucket_name='images'
     )
 
-    validate_model_task = PythonOperator(
-        task_id="val_task", python_callable=validate_model
-    )    
 
     images_over_threshold(backend_repository) >> create_bucket_tg >> download_new_images(
         backend_repository, minio_repository) >> process_images() >> create_model(minio_repository           
-        ) >> validate_model_task >> transform_model() >> upload_model()
+        ) >> validate_model_task(backend_repository) >> transform_model() >> upload_model()
 
 
 train_model()
