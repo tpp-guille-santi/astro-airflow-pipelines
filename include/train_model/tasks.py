@@ -1,4 +1,5 @@
 import logging
+import os
 
 from airflow.decorators import task
 
@@ -8,7 +9,7 @@ from include.repositories import BackendRepository
 from include.repositories import MinioRepository
 from include.settings import settings
 from include.model import train_and_evaluate_model
-import tensorflow
+import tensorflow as tf
 
 LOGGER = logging.getLogger(__name__)
 
@@ -42,28 +43,24 @@ def process_images():
 
 @task()
 def create_model(minio_repository):    
-    directory = "built_model.keras"
     model, accuracy = train_and_evaluate_model(minio_repository)
-    model.save(directory)
-    return directory
+    if not os.path.isdir(settings.MODELS_PATH):
+        os.makedirs(settings.MODELS_PATH)
+    model.save(settings.TRAINED_MODEL_PATH)
 
 @task()
 def validate_model():
     print("Dud task")
 
 @task()
-def transform_model(**context):
-    directory = context["ti"].xcom_pull(key="return_value", task_ids="create_model")
-    new_model = tensorflow.keras.models.load_model(directory)
-    #Show the model architecture
-    new_model.summary()
+def transform_model():    
+    new_model = tf.keras.models.load_model(settings.TRAINED_MODEL_PATH)
     #Transform model
-    converter = tensorflow.lite.TFLiteConverter.from_keras_model(new_model)
+    converter = tf.lite.TFLiteConverter.from_keras_model(new_model)
     tflite_model = converter.convert()
     # Save the model.
-    with open('model.tflite', 'wb') as f:
+    with open(settings.TFLITE_MODEL_PATH, 'wb') as f:
         f.write(tflite_model)        
-    return 'model.tflite'        
 
 @task()
 def upload_model():
