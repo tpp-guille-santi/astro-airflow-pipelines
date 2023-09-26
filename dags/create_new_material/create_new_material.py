@@ -43,8 +43,9 @@ def create_new_material():
     new_materials = create_new_materials(
         backend_repository, tags, threshold=settings.MATERIAL_CREATION_THRESHOLD
     )
-    created_new_material(new_materials) >> send_telegram_notification(telegram_repository,
-                                                                      new_materials)
+    created_new_material(new_materials) >> send_telegram_notification(
+        telegram_repository, new_materials
+    )
 
 
 create_new_material()

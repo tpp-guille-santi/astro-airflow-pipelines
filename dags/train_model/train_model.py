@@ -52,16 +52,19 @@ def train_model():
         firebase_credentials=settings.FIREBASE_CREDENTIALS,
         firabase_storage_bucket=settings.FIREBASE_STORAGE_BUCKET,
     )
-    create_bucket_tg = CreateBucket(
-        task_id="create_images_bucket", bucket_name='images'
-    )
+    create_bucket_tg = CreateBucket(task_id='create_images_bucket', bucket_name='images')
 
-    images_over_threshold(backend_repository) >> create_bucket_tg >> download_new_images(
-        backend_repository, minio_repository) >> create_model(minio_repository
-                                                              ) >> validate_model(
-        backend_repository) >> upload_model(firebase_repository=firebase_repository,
-                                            backend_repository=backend_repository) >> send_telegram_notification(
-        telegram_repository=telegram_repository)
+    (
+        images_over_threshold(backend_repository)
+        >> create_bucket_tg
+        >> download_new_images(backend_repository, minio_repository)
+        >> create_model(minio_repository)
+        >> validate_model(backend_repository)
+        >> upload_model(
+            firebase_repository=firebase_repository, backend_repository=backend_repository
+        )
+        >> send_telegram_notification(telegram_repository=telegram_repository)
+    )
 
 
 train_model()

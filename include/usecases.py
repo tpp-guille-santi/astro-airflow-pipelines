@@ -10,9 +10,9 @@ LOGGER = logging.getLogger(__name__)
 
 class Usecases:
     def __init__(
-            self,
-            backend_repository: BackendRepository,
-            telegram_repository: TelegramRepository,
+        self,
+        backend_repository: BackendRepository,
+        telegram_repository: TelegramRepository,
     ) -> None:
         self.backend_repository = backend_repository
         self.telegram_repository = telegram_repository

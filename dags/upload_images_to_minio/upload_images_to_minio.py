@@ -34,9 +34,7 @@ def upload_images_to_minio_dag():
         access_key=settings.MINIO_ACCESS_KEY,
         secret_key=settings.MINIO_SECRET_KEY,
     )
-    create_bucket_tg = CreateBucket(
-        task_id="create_images_bucket", bucket_name='images'
-    )
+    create_bucket_tg = CreateBucket(task_id='create_images_bucket', bucket_name='images')
     directory = "{{ dag_run.conf.get('directory', '') }}"
     create_bucket_tg >> upload_images_to_minio(directory, minio_repository)
 
