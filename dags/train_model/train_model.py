@@ -4,20 +4,19 @@ from datetime import datetime
 from datetime import timedelta
 
 from airflow.decorators import dag
-from airflow.operators.python import PythonOperator
 
 from include.custom_task_groups.create_bucket import CreateBucket
 from include.repositories import BackendRepository
+from include.repositories import FirebaseRepository
 from include.repositories import MinioRepository
 from include.repositories import TelegramRepository
 from include.settings import settings
+from include.train_model.tasks import create_model
 from include.train_model.tasks import download_new_images
 from include.train_model.tasks import images_over_threshold
-from include.train_model.tasks import process_images
-from include.train_model.tasks import create_model
-from include.train_model.tasks import validate_model
-from include.train_model.tasks import transform_model
+from include.train_model.tasks import send_telegram_notification
 from include.train_model.tasks import upload_model
+from include.train_model.tasks import validate_model
 
 default_args = {
     'owner': 'Santiago Gandolfo',
@@ -49,14 +48,20 @@ def train_model():
         access_key=settings.MINIO_ACCESS_KEY,
         secret_key=settings.MINIO_SECRET_KEY,
     )
+    firebase_repository = FirebaseRepository(
+        firebase_credentials=settings.FIREBASE_CREDENTIALS,
+        firabase_storage_bucket=settings.FIREBASE_STORAGE_BUCKET,
+    )
     create_bucket_tg = CreateBucket(
         task_id="create_images_bucket", bucket_name='images'
     )
 
-
     images_over_threshold(backend_repository) >> create_bucket_tg >> download_new_images(
-        backend_repository, minio_repository) >> process_images() >> create_model(minio_repository           
-        ) >> validate_model(backend_repository) >> transform_model() >> upload_model()
+        backend_repository, minio_repository) >> create_model(minio_repository
+                                                              ) >> validate_model(
+        backend_repository) >> upload_model(firebase_repository=firebase_repository,
+                                            backend_repository=backend_repository) >> send_telegram_notification(
+        telegram_repository=telegram_repository)
 
 
 train_model()
