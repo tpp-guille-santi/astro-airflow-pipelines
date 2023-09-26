@@ -1,4 +1,5 @@
 import logging
+import os
 
 from airflow.decorators import task
 
@@ -8,6 +9,7 @@ from include.repositories import BackendRepository
 from include.repositories import MinioRepository
 from include.settings import settings
 from include.model import train_and_evaluate_model
+import tensorflow as tf
 
 LOGGER = logging.getLogger(__name__)
 
@@ -42,6 +44,9 @@ def process_images():
 @task()
 def create_model(minio_repository):    
     model, accuracy = train_and_evaluate_model(minio_repository)
+    if not os.path.isdir(settings.MODELS_PATH):
+        os.makedirs(settings.MODELS_PATH)
+    model.save(settings.TRAINED_MODEL_PATH)
     return accuracy
 
 @task.short_circuit
@@ -53,8 +58,14 @@ def validate_model(backend_repository: BackendRepository, **context):
     return value > material.accuracy
 
 @task()
-def transform_model():
-    print("Dud task")        
+def transform_model():    
+    new_model = tf.keras.models.load_model(settings.TRAINED_MODEL_PATH)
+    #Transform model
+    converter = tf.lite.TFLiteConverter.from_keras_model(new_model)
+    tflite_model = converter.convert()
+    # Save the model.
+    with open(settings.TFLITE_MODEL_PATH, 'wb') as f:
+        f.write(tflite_model)        
 
 @task()
 def upload_model():

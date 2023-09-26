@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     TELEGRAM_TOKEN: str
     IMAGES_PATH: str
     TRAINED_MODEL_PATH: str
+    TFLITE_MODEL_PATH: str
+    MODELS_PATH: str
     BATCH_SIZE: int
     IMG_HEIGHT: int
     IMG_WIDTH: int
