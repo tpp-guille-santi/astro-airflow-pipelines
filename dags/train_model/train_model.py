@@ -4,6 +4,7 @@ from datetime import datetime
 from datetime import timedelta
 
 from airflow.decorators import dag
+from airflow.operators.python import PythonOperator
 
 from include.custom_task_groups.create_bucket import CreateBucket
 from include.repositories import BackendRepository
@@ -52,9 +53,10 @@ def train_model():
         task_id="create_images_bucket", bucket_name='images'
     )
 
+
     images_over_threshold(backend_repository) >> create_bucket_tg >> download_new_images(
         backend_repository, minio_repository) >> process_images() >> create_model(minio_repository           
-        ) >> validate_model() >> transform_model() >> upload_model()
+        ) >> validate_model(backend_repository) >> transform_model() >> upload_model()
 
 
 train_model()

@@ -41,11 +41,16 @@ def process_images():
 
 @task()
 def create_model(minio_repository):    
-    train_and_evaluate_model(minio_repository)
+    model, accuracy = train_and_evaluate_model(minio_repository)
+    return accuracy
 
-@task()
-def validate_model():
-    print("Dud task")
+@task.short_circuit
+def validate_model(backend_repository: BackendRepository, **context):
+    value = context["ti"].xcom_pull(key="return_value", task_ids="create_model")
+    print("New Accuracy: ", value)
+    material = backend_repository.get_latest_model()
+    print("Old Accuracy: ", material.accuracy)
+    return value > material.accuracy
 
 @task()
 def transform_model():
