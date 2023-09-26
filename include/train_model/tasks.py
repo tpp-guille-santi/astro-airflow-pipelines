@@ -47,10 +47,15 @@ def create_model(minio_repository):
     if not os.path.isdir(settings.MODELS_PATH):
         os.makedirs(settings.MODELS_PATH)
     model.save(settings.TRAINED_MODEL_PATH)
+    return accuracy
 
-@task()
-def validate_model():
-    print("Dud task")
+@task.short_circuit
+def validate_model(backend_repository: BackendRepository, **context):
+    value = context["ti"].xcom_pull(key="return_value", task_ids="create_model")
+    print("New Accuracy: ", value)
+    material = backend_repository.get_latest_model()
+    print("Old Accuracy: ", material.accuracy)
+    return value > material.accuracy
 
 @task()
 def transform_model():    
