@@ -5,11 +5,14 @@
 from airflow.decorators import task
 from airflow.operators.empty import EmptyOperator
 from airflow.utils.task_group import TaskGroup
+from minio import Minio
+
+from include.settings import settings
 
 # -------------------- #
 # Local module imports #
 # -------------------- #
-from include.global_variables import global_variables as gv
+
 
 # --------------- #
 # TaskGroup class #
@@ -28,14 +31,11 @@ class CreateBucket(TaskGroup):
         # --------------------- #
 
         @task(task_group=self)
-        def list_buckets_minio():
+        def list_buckets_minio(minio_client: Minio):
             """Returns the list of all bucket names in a MinIO instance."""
-
-            # use a utility function to get the MinIO client
-            client = gv.get_minio_client()
-            buckets = client.list_buckets()
+            buckets = minio_client.list_buckets()
             existing_bucket_names = [bucket.name for bucket in buckets]
-            gv.task_log.info(f'MinIO contains: {existing_bucket_names}')
+            print(f'MinIO contains: {existing_bucket_names}')
 
             return existing_bucket_names
 
@@ -58,16 +58,20 @@ class CreateBucket(TaskGroup):
         # ------------- #
 
         @task(task_group=self)
-        def create_bucket():
+        def create_bucket(minio_client: Minio):
             """Creates a bucket in MinIO."""
 
-            client = gv.get_minio_client()
-            client.make_bucket(bucket_name)
+            minio_client.make_bucket(bucket_name)
 
         # ----------------------------- #
         # Empty Operators for structure #
         # ----------------------------- #
-
+        client = Minio(
+            settings.MINIO_HOST,
+            access_key=settings.MINIO_ACCESS_KEY,
+            secret_key=settings.MINIO_SECRET_KEY,
+            secure=False,
+        )
         bucket_already_exists = EmptyOperator(task_id='bucket_already_exists', task_group=self)
 
         bucket_exists = EmptyOperator(
@@ -75,6 +79,6 @@ class CreateBucket(TaskGroup):
         )
 
         # set dependencies within task group
-        branch_task = decide_whether_to_create_bucket(list_buckets_minio())
-        branch_options = [create_bucket(), bucket_already_exists]
+        branch_task = decide_whether_to_create_bucket(list_buckets_minio(client))
+        branch_options = [create_bucket(client), bucket_already_exists]
         branch_task >> branch_options >> bucket_exists

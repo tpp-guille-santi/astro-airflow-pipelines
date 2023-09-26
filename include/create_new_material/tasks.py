@@ -55,8 +55,8 @@ def created_new_material(new_materials):
 def send_telegram_notification(telegram_repository: TelegramRepository, new_materials):
     LOGGER.info('Sending Telegram notification')
     materials = [Material(**material) for material in new_materials]
-    formatted_new_materials = ', '.join(['- ' + material.name for material in materials])
-    message = f'Se crearon los siguientes materiales: {formatted_new_materials}'
+    formatted_new_materials = '\n'.join([f'- <b>{material.name}</b>' for material in materials])
+    message = f'Se crearon los siguientes materiales:\n{formatted_new_materials}'
     LOGGER.info(message)
     telegram_repository.send_message(message)
     LOGGER.info('Sent Telegram notification')

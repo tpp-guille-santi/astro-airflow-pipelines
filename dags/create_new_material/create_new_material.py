@@ -12,6 +12,7 @@ from include.create_new_material.tasks import send_telegram_notification
 from include.repositories import BackendRepository
 from include.repositories import TelegramRepository
 from include.settings import settings
+from include.usecases import task_fail_alert
 
 default_args = {
     'owner': 'Santiago Gandolfo',
@@ -21,6 +22,7 @@ default_args = {
     'email_on_retry': False,
     'retries': 0,
     'retry_delay': timedelta(minutes=5),
+    'on_failure_callback': task_fail_alert,
 }
 
 

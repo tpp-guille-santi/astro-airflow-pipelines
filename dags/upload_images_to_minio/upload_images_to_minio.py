@@ -9,6 +9,7 @@ from include.custom_task_groups.create_bucket import CreateBucket
 from include.repositories import MinioRepository
 from include.settings import settings
 from include.upload_images_to_minio.tasks import upload_images_to_minio
+from include.usecases import task_fail_alert
 
 default_args = {
     'owner': 'Santiago Gandolfo',
@@ -18,6 +19,7 @@ default_args = {
     'email_on_retry': False,
     'retries': 0,
     'retry_delay': timedelta(minutes=5),
+    'on_failure_callback': task_fail_alert,
 }
 
 

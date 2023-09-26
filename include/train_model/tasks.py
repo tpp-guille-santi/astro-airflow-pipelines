@@ -66,7 +66,7 @@ def validate_model(backend_repository: BackendRepository, **context):
     return value > material.accuracy
 
 
-@task.short_circuit
+@task
 def upload_model(
     firebase_repository: FirebaseRepository,
     backend_repository: BackendRepository,
@@ -86,7 +86,7 @@ def upload_model(
 @task()
 def send_telegram_notification(telegram_repository: TelegramRepository, **context):
     model_accuracy = context['ti'].xcom_pull(key='return_value', task_ids='create_model')
-    message = f'Se actualizó el modelo. Nueva exactitud: {model_accuracy}'
+    message = f'Se actualizó el modelo. Nueva exactitud: <b>{model_accuracy}</b>'
     telegram_repository.send_message(message)
     print('Sent Telegram Notification')
 

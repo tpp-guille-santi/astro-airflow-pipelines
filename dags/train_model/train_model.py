@@ -17,6 +17,7 @@ from include.train_model.tasks import images_over_threshold
 from include.train_model.tasks import send_telegram_notification
 from include.train_model.tasks import upload_model
 from include.train_model.tasks import validate_model
+from include.usecases import task_fail_alert
 
 default_args = {
     'owner': 'Santiago Gandolfo',
@@ -26,6 +27,7 @@ default_args = {
     'email_on_retry': False,
     'retries': 0,
     'retry_delay': timedelta(minutes=5),
+    'on_failure_callback': task_fail_alert,
 }
 
 
@@ -60,10 +62,8 @@ def train_model():
         >> download_new_images(backend_repository, minio_repository)
         >> create_model(minio_repository)
         >> validate_model(backend_repository)
-        >> upload_model(
-            firebase_repository=firebase_repository, backend_repository=backend_repository
-        )
-        >> send_telegram_notification(telegram_repository=telegram_repository)
+        >> upload_model(firebase_repository, backend_repository)
+        >> send_telegram_notification(telegram_repository)
     )
 
 
