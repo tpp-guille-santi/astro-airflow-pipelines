@@ -1,6 +1,7 @@
 import io
 import json
 import logging
+import pickle
 
 import firebase_admin
 import httpx
@@ -187,6 +188,27 @@ class MinioRepository:
             secure=False,
         )
 
+    def save_model(self, model: keras.Model):
+        object_key = 'model.keras'
+        model_bytes = pickle.dumps(model)
+        self.minio_client.put_object(
+            bucket_name='models',
+            object_name='model.keras',
+            data=io.BytesIO(model_bytes),
+            length=len(model_bytes),
+        )
+        print(f'Uploaded {object_key} to MinIO bucket.')
+
+    def download_model(self) -> keras.Model:
+        print('Downloading model')
+        model_data = self.minio_client.get_object(
+            bucket_name='models',
+            object_name='model.keras',
+        )
+        print('Deserializing model')
+        model_bytes = model_data.read()
+        return pickle.loads(model_bytes)
+
     def save_images(self, material: Material, image: Image, image_data: io.BytesIO):
         object_key = f'{material.order:02}-{material.name}/{image.filename}'
         self.minio_client.put_object(
@@ -236,10 +258,6 @@ class MinioRepository:
 
         images = np.array(images)
         labels = np.array(labels)
-        print('images')
-        print(images)
-        print('labels')
-        print(labels)
         dataset = tensorflow.data.Dataset.from_tensor_slices((images, labels))
         dataset = dataset.batch(settings.BATCH_SIZE)
         return dataset

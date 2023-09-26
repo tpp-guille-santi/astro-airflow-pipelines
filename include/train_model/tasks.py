@@ -1,8 +1,6 @@
 import logging
-import os
 from time import time
 
-import tensorflow as tf
 from airflow.decorators import task
 
 from include.entities import Image
@@ -44,11 +42,9 @@ def download_new_images(
 
 
 @task()
-def create_model(minio_repository):
+def create_model(minio_repository: MinioRepository):
     model, accuracy = train_and_evaluate_model(minio_repository)
-    if not os.path.isdir(settings.MODELS_PATH):
-        os.makedirs(settings.MODELS_PATH)
-    model.save(settings.TRAINED_MODEL_PATH)
+    minio_repository.save_model(model)
     return accuracy
 
 
@@ -65,10 +61,11 @@ def validate_model(backend_repository: BackendRepository, **context):
 def upload_model(
     firebase_repository: FirebaseRepository,
     backend_repository: BackendRepository,
+    minio_repository: MinioRepository,
     **context,
 ):
     model_accuracy = context['ti'].xcom_pull(key='return_value', task_ids='create_model')
-    model = tf.keras.models.load_model(settings.TRAINED_MODEL_PATH)
+    model = minio_repository.download_model()
     uploaded_model = firebase_repository.upload_model(model)
     if uploaded_model:
         current_timestamp = int(time())
