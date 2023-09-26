@@ -44,11 +44,6 @@ def download_new_images(
 
 
 @task()
-def process_images():
-    print('Dud task')
-
-
-@task()
 def create_model(minio_repository):
     model, accuracy = train_and_evaluate_model(minio_repository)
     if not os.path.isdir(settings.MODELS_PATH):
