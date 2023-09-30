@@ -54,9 +54,11 @@ def train_model():
         firebase_credentials=settings.FIREBASE_CREDENTIALS,
         firabase_storage_bucket=settings.FIREBASE_STORAGE_BUCKET,
     )
+    create_bucket_tg = CreateBucket(
+        task_id="create_images_bucket", bucket_name='images'
+    )
     create_images_bucket = CreateBucket(task_id='create_images_bucket', bucket_name='images')
     create_models_bucket = CreateBucket(task_id='create_models_bucket', bucket_name='models')
-
     (
         images_over_threshold(backend_repository)
         >> create_images_bucket

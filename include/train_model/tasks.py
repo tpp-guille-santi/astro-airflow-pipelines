@@ -1,11 +1,12 @@
 import logging
 from time import time
 
+import tensorflow as tf
 from airflow.decorators import task
 
 from include.entities import Image
-from include.entities import Material
 from include.entities import MLModel
+from include.entities import Material
 from include.model import train_and_evaluate_model
 from include.repositories import BackendRepository
 from include.repositories import FirebaseRepository

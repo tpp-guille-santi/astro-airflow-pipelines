@@ -171,12 +171,17 @@ class FirebaseRepository:
         bucket = {**json.loads(firabase_storage_bucket)}
         firebase_admin.initialize_app(cred, bucket)
 
-    def upload_model(self, model: keras.Model):
-        existing_model = ml.get_model(model_id=self.MODEL_ID)
-        existing_model.model_format = ml.TFLiteFormat(
-            model_source=ml.TFLiteGCSModelSource.from_keras_model(model)
-        )
-        ml.update_model(existing_model)
+    def upload_model(self, model: keras.Model) -> bool:
+        try:
+            existing_model = ml.get_model(model_id=self.MODEL_ID)
+            existing_model.model_format = ml.TFLiteFormat(
+                model_source=ml.TFLiteGCSModelSource.from_keras_model(model)
+            )
+            ml.update_model(existing_model)
+            return True
+        except Exception as e:
+            print(f"Model upload failed: {str(e)}")
+            return False
 
 
 class MinioRepository:
