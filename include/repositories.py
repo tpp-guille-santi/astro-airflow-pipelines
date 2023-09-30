@@ -11,6 +11,7 @@ from firebase_admin import credentials
 from firebase_admin import ml
 from minio import Minio
 from PIL import Image as PilImage
+from pillow_heif import register_heif_opener
 from tensorflow import keras
 
 from include.entities import Image
@@ -19,6 +20,8 @@ from include.entities import Material
 from include.entities import MaterialUpdate
 from include.entities import MLModel
 from include.settings import settings
+
+register_heif_opener()
 
 LOGGER = logging.getLogger(__name__)
 
