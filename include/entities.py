@@ -13,7 +13,13 @@ class Image(BaseModel):
     tags: list[str] | None = None
 
 
-class Material(BaseModel):
+class MaterialUpdate(BaseModel):
+    name: str | None = None
+    order: int | None = None
+    enabled: bool | None = None
+
+
+class MaterialUpdate(BaseModel):
     name: str
     order: int
     enabled: bool

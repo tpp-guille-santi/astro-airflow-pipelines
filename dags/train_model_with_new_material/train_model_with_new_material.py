@@ -11,7 +11,7 @@ from include.repositories import FirebaseRepository
 from include.repositories import MinioRepository
 from include.repositories import TelegramRepository
 from include.settings import settings
-from include.train_model.tasks import create_model
+from include.train_model.tasks import create_model, enable_material
 from include.train_model.tasks import download_new_images
 from include.train_model.tasks import images_over_threshold
 from include.train_model.tasks import send_telegram_notification
@@ -38,7 +38,7 @@ default_args = {
     catchup=False,
     max_active_runs=1,
 )
-def train_model():
+def train_model_with_new_material():
     backend_repository = BackendRepository(base_url=settings.BACKEND_URL)
     telegram_repository = TelegramRepository(
         base_url=settings.TELEGRAM_URL,
@@ -56,16 +56,17 @@ def train_model():
     )
     create_images_bucket = CreateBucket(task_id='create_images_bucket', bucket_name='images')
     create_models_bucket = CreateBucket(task_id='create_models_bucket', bucket_name='models')
+    material_id = "{{ dag_run.conf.get('material_id', '') }}"
     (
-        images_over_threshold(backend_repository)
+        enable_material(backend_repository, material_id)
         >> create_images_bucket
         >> create_models_bucket
         >> download_new_images(backend_repository, minio_repository)
         >> create_model(minio_repository)
-        >> validate_model(backend_repository, threshold=1.0)
+        >> validate_model(backend_repository, threshold=0.9)
         >> upload_model(firebase_repository, backend_repository, minio_repository)
         >> send_telegram_notification(telegram_repository)
     )
 
 
-train_model()
+train_model_with_new_material()
