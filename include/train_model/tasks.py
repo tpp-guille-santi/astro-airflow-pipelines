@@ -1,15 +1,19 @@
 import logging
 import os
+from time import time
 
+import tensorflow as tf
 from airflow.decorators import task
 
 from include.entities import Image
+from include.entities import MLModel
 from include.entities import Material
-from include.repositories import BackendRepository
-from include.repositories import MinioRepository
-from include.settings import settings
 from include.model import train_and_evaluate_model
-import tensorflow as tf
+from include.repositories import BackendRepository
+from include.repositories import FirebaseRepository
+from include.repositories import MinioRepository
+from include.repositories import TelegramRepository
+from include.settings import settings
 
 LOGGER = logging.getLogger(__name__)
 
@@ -37,17 +41,20 @@ def download_new_images(backend_repository: BackendRepository,
 
             # backend_repository.mark_image_as_downloaded(image)
 
+
 @task()
 def process_images():
     print("Dud task")
 
+
 @task()
-def create_model(minio_repository):    
+def create_model(minio_repository):
     model, accuracy = train_and_evaluate_model(minio_repository)
     if not os.path.isdir(settings.MODELS_PATH):
         os.makedirs(settings.MODELS_PATH)
     model.save(settings.TRAINED_MODEL_PATH)
     return accuracy
+
 
 @task.short_circuit
 def validate_model(backend_repository: BackendRepository, **context):
@@ -57,47 +64,31 @@ def validate_model(backend_repository: BackendRepository, **context):
     print("Old Accuracy: ", material.accuracy)
     return value > material.accuracy
 
-@task()
-def transform_model():    
-    new_model = tf.keras.models.load_model(settings.TRAINED_MODEL_PATH)
-    #Transform model
-    converter = tf.lite.TFLiteConverter.from_keras_model(new_model)
-    tflite_model = converter.convert()
-    # Save the model.
-    with open(settings.TFLITE_MODEL_PATH, 'wb') as f:
-        f.write(tflite_model)        
+
+@task.short_circuit
+def upload_model(firebase_repository: FirebaseRepository,
+                 backend_repository: BackendRepository,
+                 **context,
+                 ):
+    model_accuracy = context["ti"].xcom_pull(key="return_value", task_ids="create_model")
+    model = tf.keras.models.load_model(settings.TRAINED_MODEL_PATH)
+    uploaded_model = firebase_repository.upload_model(model)
+    if uploaded_model:
+        current_timestamp = int(time())
+        ml_model = MLModel(timestamp=current_timestamp, accuracy=model_accuracy)
+        backend_repository.create_model(ml_model)
+        return True
+    return False
+
 
 @task()
-def upload_model():
-    print("Dud task")    
-#
-# def upload_model(model, model_accuracy: float):
-#     print('Uploading Model')
-#     current_model = backend_repository.get_latest_model()
-#     print(f'current_model: {current_model}')
-#     if model_accuracy <= current_model.accuracy:
-#         return False
-#     print('Model accuracy is larger')
-#     current_timestamp = int(time())
-#     ml_model = MLModel(timestamp=current_timestamp, accuracy=model_accuracy)
-#     print(ml_model)
-#     print(ml_model.dict())
-#     print('Saving model in Firebase')
-#     firebase_repository.upload_model(model)
-#     print('Saved model in Firebase')
-#     print('Saving model in DB')
-#     backend_repository.create_model(ml_model)
-#     print('Saved model in DB')
-#     return True
-#
-#
-# def send_telegram_notification(model_accuracy: float):
-#     print('Sending Telegram Notification')
-#     message = f'Se actualizó el modelo. Nueva exactitud: {model_accuracy}'
-#     telegram_repository.send_message(message)
-#     print('Sent Telegram Notification')
-#
-#
+def send_telegram_notification(telegram_repository: TelegramRepository, **context):
+    model_accuracy = context["ti"].xcom_pull(key="return_value", task_ids="create_model")
+    message = f'Se actualizó el modelo. Nueva exactitud: {model_accuracy}'
+    telegram_repository.send_message(message)
+    print('Sent Telegram Notification')
+
+
 def _get_material(image: Image, materials: dict[str, Material]):
     if image.material_name in materials:
         return materials[image.material_name]
@@ -105,30 +96,3 @@ def _get_material(image: Image, materials: dict[str, Material]):
         if tag in materials:
             return materials[tag]
     return None
-#
-#
-# backend_repository = BackendRepository(base_url=settings.BACKEND_URL)
-# telegram_repository = TelegramRepository(
-#     base_url=settings.TELEGRAM_URL,
-#     token=settings.TELEGRAM_TOKEN,
-#     chat_id=settings.TELEGRAM_CHAT_ID,
-# )
-# firebase_repository = FirebaseRepository(
-#     firebase_credentials=settings.FIREBASE_CREDENTIALS,
-#     firabase_storage_bucket=settings.FIREBASE_STORAGE_BUCKET,
-# )
-#
-# usecases = Usecases(backend_repository, telegram_repository, firebase_repository)
-#
-# is_over_threshold = usecases.images_over_threshold()
-# print(f'is_over_threshold: {is_over_threshold}')
-# if is_over_threshold:
-#     print('Downloading new images')
-#     usecases.download_new_images(images_path=settings.IMAGES_PATH)
-#     print('Downloaded new images')
-#     print('Training model')
-#     model, model_accuracy = train_and_evaluate_model()
-#     print(f'Trained model. Accuracy: {model_accuracy}')
-#     uploaded_model = usecases.upload_model(model, model_accuracy)
-#     if uploaded_model:
-#         usecases.send_telegram_notification(model_accuracy)
