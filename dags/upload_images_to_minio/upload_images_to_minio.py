@@ -9,6 +9,7 @@ from include.custom_task_groups.create_bucket import CreateBucket
 from include.repositories import MinioRepository
 from include.settings import settings
 from include.upload_images_to_minio.tasks import upload_images_to_minio
+from include.usecases import task_fail_alert
 
 default_args = {
     'owner': 'Santiago Gandolfo',
@@ -18,6 +19,7 @@ default_args = {
     'email_on_retry': False,
     'retries': 0,
     'retry_delay': timedelta(minutes=5),
+    'on_failure_callback': task_fail_alert,
 }
 
 
@@ -34,9 +36,7 @@ def upload_images_to_minio_dag():
         access_key=settings.MINIO_ACCESS_KEY,
         secret_key=settings.MINIO_SECRET_KEY,
     )
-    create_bucket_tg = CreateBucket(
-        task_id="create_images_bucket", bucket_name='images'
-    )
+    create_bucket_tg = CreateBucket(task_id='create_images_bucket', bucket_name='images')
     directory = "{{ dag_run.conf.get('directory', '') }}"
     create_bucket_tg >> upload_images_to_minio(directory, minio_repository)
 

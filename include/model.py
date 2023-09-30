@@ -1,8 +1,7 @@
 import pathlib
-import numpy as np
 
+import numpy as np
 import tensorflow
-from tensorflow import keras
 
 from include.repositories import MinioRepository
 from include.settings import settings
@@ -19,30 +18,33 @@ def prepare_dataset(data_dir, subset):
         image_size=(settings.IMG_HEIGHT, settings.IMG_WIDTH),
     )
 
-#TODO: Return -> tuple[keras.Model, float]
+
+# TODO: Return -> tuple[keras.Model, float]
 def train_and_evaluate_model(minio_repository: MinioRepository):
     complete_dataset = minio_repository.prepare_minio_dataset('training')
-    
+
     # Extract unique classes from labels
     unique_classes = np.unique(np.concatenate(list(complete_dataset.map(lambda x, y: y))))
     num_classes = len(unique_classes)
 
-    #Divide the dataset in 3 parts
+    # Divide the dataset in 3 parts
     train_dataset, validation_dataset, test_dataset = divide_dataset(complete_dataset)
-    print("Dataset divided")
+    print('Dataset divided')
 
     train_dataset = train_dataset.prefetch(buffer_size=tensorflow.data.AUTOTUNE)
     validation_dataset = validation_dataset.prefetch(buffer_size=tensorflow.data.AUTOTUNE)
     test_dataset = test_dataset.prefetch(buffer_size=tensorflow.data.AUTOTUNE)
-    print("Preparing base model")
+    print('Preparing base model')
     # Create the base model from the pre-trained model MobileNet V2
     img_shape = (settings.IMG_HEIGHT, settings.IMG_WIDTH) + (3,)
     base_model = tensorflow.keras.applications.MobileNetV2(
         input_shape=img_shape, include_top=False, weights=None
     )
-    base_model.load_weights("./directory/mobilenet_v2_weights_tf_dim_ordering_tf_kernels_1.0_224_no_top.h5")
+    base_model.load_weights(
+        './directory/mobilenet_v2_weights_tf_dim_ordering_tf_kernels_1.0_224_no_top.h5'
+    )
     base_model.trainable = False
-    print("Starting pre process")
+    print('Starting pre process')
     data_augmentation = tensorflow.keras.Sequential(
         [
             tensorflow.keras.layers.RandomFlip(
@@ -99,7 +101,6 @@ def train_and_evaluate_model(minio_repository: MinioRepository):
     test_loss, test_accuracy = model.evaluate(test_dataset)
 
     return model, test_accuracy
-    
 
 
 # TODO:
@@ -113,6 +114,7 @@ def load_and_evaluate_model():
     model = tensorflow.keras.models.load_model(settings.TRAINED_MODEL_PATH)
     test_loss, test_accuracy = model.evaluate(test_dataset)
     return model, test_accuracy
+
 
 def divide_dataset(dataset):
     # Shuffle the dataset

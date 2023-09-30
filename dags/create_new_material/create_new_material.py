@@ -12,6 +12,7 @@ from include.create_new_material.tasks import send_telegram_notification
 from include.repositories import BackendRepository
 from include.repositories import TelegramRepository
 from include.settings import settings
+from include.usecases import task_fail_alert
 
 default_args = {
     'owner': 'Santiago Gandolfo',
@@ -21,6 +22,7 @@ default_args = {
     'email_on_retry': False,
     'retries': 0,
     'retry_delay': timedelta(minutes=5),
+    'on_failure_callback': task_fail_alert,
 }
 
 
@@ -43,8 +45,9 @@ def create_new_material():
     new_materials = create_new_materials(
         backend_repository, tags, threshold=settings.MATERIAL_CREATION_THRESHOLD
     )
-    created_new_material(new_materials) >> send_telegram_notification(telegram_repository,
-                                                                      new_materials)
+    created_new_material(new_materials) >> send_telegram_notification(
+        telegram_repository, new_materials
+    )
 
 
 create_new_material()

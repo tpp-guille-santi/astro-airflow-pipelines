@@ -1,0 +1,26 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/psf/black
+    rev: 23.7.0
+    hooks:
+      - id: black
+        exclude: ^.astro/
+        args: [ --safe, --skip-string-normalization, --line-length=100 ]
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: check-toml
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: mixed-line-ending
+      - id: check-merge-conflict
+        language_version: python3
+
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: 'v0.0.278'
+    hooks:
+      - id: ruff
+        exclude: ^.astro/
+        args: [ --fix, --exit-non-zero-on-fix ]

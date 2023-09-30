@@ -27,6 +27,6 @@ def upload_images_to_minio(directory: str, minio_repository: MinioRepository):
                     object_key = f'{material_dir}/{image_file}'
                     # Upload the image to Minio
                     minio_repository.save_images_from_file(object_key, image_path)
-                    print(f"Uploaded: {object_key}")
+                    print(f'Uploaded: {object_key}')
                 except Exception as e:
-                    print(f"Error uploading {image_path}: {e}")
+                    print(f'Error uploading {image_path}: {e}')

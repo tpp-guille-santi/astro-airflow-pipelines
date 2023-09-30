@@ -1,5 +1,4 @@
 import logging
-import os
 from time import time
 
 import tensorflow as tf
@@ -25,9 +24,10 @@ def images_over_threshold(backend_repository: BackendRepository):
 
 
 @task()
-def download_new_images(backend_repository: BackendRepository,
-                        minio_repository: MinioRepository,
-                        ):
+def download_new_images(
+    backend_repository: BackendRepository,
+    minio_repository: MinioRepository,
+):
     print('Downloading new Images')
     images = backend_repository.get_new_images()
     materials = backend_repository.get_enabled_materials()
@@ -35,43 +35,38 @@ def download_new_images(backend_repository: BackendRepository,
         material = _get_material(image, materials)
         if material:
             image_data = backend_repository.download_image(image)
-            LOGGER.info("Downloaded image. Uploading to MinIO")
+            LOGGER.info('Downloaded image. Uploading to MinIO')
             minio_repository.save_images(material=material, image=image, image_data=image_data)
-            LOGGER.info(f"Uploaded image {image.filename} to MiniIO")
+            LOGGER.info(f'Uploaded image {image.filename} to MiniIO')
 
             # backend_repository.mark_image_as_downloaded(image)
 
 
 @task()
-def process_images():
-    print("Dud task")
-
-
-@task()
-def create_model(minio_repository):
+def create_model(minio_repository: MinioRepository):
     model, accuracy = train_and_evaluate_model(minio_repository)
-    if not os.path.isdir(settings.MODELS_PATH):
-        os.makedirs(settings.MODELS_PATH)
-    model.save(settings.TRAINED_MODEL_PATH)
+    minio_repository.save_model(model)
     return accuracy
 
 
 @task.short_circuit
 def validate_model(backend_repository: BackendRepository, **context):
-    value = context["ti"].xcom_pull(key="return_value", task_ids="create_model")
-    print("New Accuracy: ", value)
+    value = context['ti'].xcom_pull(key='return_value', task_ids='create_model')
+    print('New Accuracy: ', value)
     material = backend_repository.get_latest_model()
-    print("Old Accuracy: ", material.accuracy)
+    print('Old Accuracy: ', material.accuracy)
     return value > material.accuracy
 
 
-@task.short_circuit
-def upload_model(firebase_repository: FirebaseRepository,
-                 backend_repository: BackendRepository,
-                 **context,
-                 ):
-    model_accuracy = context["ti"].xcom_pull(key="return_value", task_ids="create_model")
-    model = tf.keras.models.load_model(settings.TRAINED_MODEL_PATH)
+@task
+def upload_model(
+    firebase_repository: FirebaseRepository,
+    backend_repository: BackendRepository,
+    minio_repository: MinioRepository,
+    **context,
+):
+    model_accuracy = context['ti'].xcom_pull(key='return_value', task_ids='create_model')
+    model = minio_repository.download_model()
     uploaded_model = firebase_repository.upload_model(model)
     if uploaded_model:
         current_timestamp = int(time())
@@ -83,8 +78,8 @@ def upload_model(firebase_repository: FirebaseRepository,
 
 @task()
 def send_telegram_notification(telegram_repository: TelegramRepository, **context):
-    model_accuracy = context["ti"].xcom_pull(key="return_value", task_ids="create_model")
-    message = f'Se actualizó el modelo. Nueva exactitud: {model_accuracy}'
+    model_accuracy = context['ti'].xcom_pull(key='return_value', task_ids='create_model')
+    message = f'Se actualizó el modelo. Nueva exactitud: <b>{model_accuracy}</b>'
     telegram_repository.send_message(message)
     print('Sent Telegram Notification')
 

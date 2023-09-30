@@ -4,15 +4,16 @@ from collections import defaultdict
 from include.entities import Material
 from include.repositories import BackendRepository
 from include.repositories import TelegramRepository
+from include.settings import settings
 
 LOGGER = logging.getLogger(__name__)
 
 
 class Usecases:
     def __init__(
-            self,
-            backend_repository: BackendRepository,
-            telegram_repository: TelegramRepository,
+        self,
+        backend_repository: BackendRepository,
+        telegram_repository: TelegramRepository,
     ) -> None:
         self.backend_repository = backend_repository
         self.telegram_repository = telegram_repository
@@ -52,5 +53,19 @@ class Usecases:
             formatted_new_materials = '\n'.join(
                 ['- ' + material.name for material in new_materials]
             )
-            message = f'Se crearon los siguientes materiales:{formatted_new_materials}'
+            message = f'Se crearon los siguientes materiales:\n{formatted_new_materials}'
             self.telegram_repository.send_message(message)
+
+
+def task_fail_alert(context):
+    task = (context.get('task_instance').task_id,)
+    dag = (context.get('task_instance').dag_id,)
+
+    message = f'Falló la Task: <b>{task[0]}</b> del DAG <b>{dag[0]}</b>'
+    print(message)
+    telegram_repository = TelegramRepository(
+        base_url=settings.TELEGRAM_URL,
+        token=settings.TELEGRAM_TOKEN,
+        chat_id=settings.TELEGRAM_CHAT_ID,
+    )
+    telegram_repository.send_message(message)

@@ -1,22 +1,23 @@
 import io
 import json
 import logging
+import pickle
 
 import firebase_admin
 import httpx
 import numpy as np
 import tensorflow
-from PIL import Image as pil
 from firebase_admin import credentials
 from firebase_admin import ml
+from minio import Minio
+from PIL import Image as PilImage
 from tensorflow import keras
 
 from include.entities import Image
 from include.entities import ImagesCountResponse
-from include.entities import MLModel
 from include.entities import Material
+from include.entities import MLModel
 from include.settings import settings
-from minio import Minio
 
 LOGGER = logging.getLogger(__name__)
 
@@ -148,8 +149,13 @@ class TelegramRepository:
 
     def send_message(self, message: str) -> dict:
         with httpx.Client() as client:
-            url = f'{self.base_url}{self.token}/sendMessage?chat_id={self.chat_id}&text={message}'
-            response = client.get(url)
+            url = f'{self.base_url}{self.token}/sendMessage'
+            data = {
+                'chat_id': self.chat_id,
+                'text': message,
+                'parse_mode': 'HTML',
+            }
+            response = client.post(url, data=data)
             if response.status_code == 200:
                 data = response.json()
                 return data
@@ -179,7 +185,6 @@ class FirebaseRepository:
 
 
 class MinioRepository:
-
     def __init__(self, host: str, access_key: str, secret_key: str):
         self.minio_client = Minio(
             host,
@@ -188,16 +193,42 @@ class MinioRepository:
             secure=False,
         )
 
+    def save_model(self, model: keras.Model):
+        object_key = 'model.keras'
+        model_bytes = pickle.dumps(model)
+        self.minio_client.put_object(
+            bucket_name='models',
+            object_name='model.keras',
+            data=io.BytesIO(model_bytes),
+            length=len(model_bytes),
+        )
+        print(f'Uploaded {object_key} to MinIO bucket.')
+
+    def download_model(self) -> keras.Model:
+        print('Downloading model')
+        model_data = self.minio_client.get_object(
+            bucket_name='models',
+            object_name='model.keras',
+        )
+        print('Deserializing model')
+        model_bytes = model_data.read()
+        return pickle.loads(model_bytes)
+
     def save_images(self, material: Material, image: Image, image_data: io.BytesIO):
         object_key = f'{material.order:02}-{material.name}/{image.filename}'
-        self.minio_client.put_object(bucket_name='images', object_name=object_key,
-                                     data=image_data, length=image_data.getbuffer().nbytes)
-        print(f"Uploaded {object_key} to MinIO bucket.")
+        self.minio_client.put_object(
+            bucket_name='images',
+            object_name=object_key,
+            data=image_data,
+            length=image_data.getbuffer().nbytes,
+        )
+        print(f'Uploaded {object_key} to MinIO bucket.')
 
     def save_images_from_file(self, object_key: str, image_path: str):
-        self.minio_client.fput_object(bucket_name='images', object_name=object_key,
-                                      file_path=image_path)
-        print(f"Uploaded {object_key} to MinIO bucket.")
+        self.minio_client.fput_object(
+            bucket_name='images', object_name=object_key, file_path=image_path
+        )
+        print(f'Uploaded {object_key} to MinIO bucket.')
 
     def prepare_minio_dataset(self, subset):
         images = []
@@ -225,17 +256,13 @@ class MinioRepository:
             labels.append(label)
 
             data = self.minio_client.get_object('images', obj.object_name).read()
-            img = pil.open(io.BytesIO(data))
+            img = PilImage.open(io.BytesIO(data))
             img = img.resize((settings.IMG_HEIGHT, settings.IMG_WIDTH))
             img = np.array(img)
             images.append(img)
 
         images = np.array(images)
         labels = np.array(labels)
-        print('images')
-        print(images)
-        print('labels')
-        print(labels)
         dataset = tensorflow.data.Dataset.from_tensor_slices((images, labels))
         dataset = dataset.batch(settings.BATCH_SIZE)
         return dataset
