@@ -1,12 +1,11 @@
 import logging
 from time import time
 
-import tensorflow as tf
 from airflow.decorators import task
 
 from include.entities import Image
-from include.entities import MLModel
 from include.entities import Material
+from include.entities import MLModel
 from include.model import train_and_evaluate_model
 from include.repositories import BackendRepository
 from include.repositories import FirebaseRepository
@@ -67,13 +66,10 @@ def upload_model(
 ):
     model_accuracy = context['ti'].xcom_pull(key='return_value', task_ids='create_model')
     model = minio_repository.download_model()
-    uploaded_model = firebase_repository.upload_model(model)
-    if uploaded_model:
-        current_timestamp = int(time())
-        ml_model = MLModel(timestamp=current_timestamp, accuracy=model_accuracy)
-        backend_repository.create_model(ml_model)
-        return True
-    return False
+    firebase_repository.upload_model(model)
+    current_timestamp = int(time())
+    ml_model = MLModel(timestamp=current_timestamp, accuracy=model_accuracy)
+    backend_repository.create_model(ml_model)
 
 
 @task()
