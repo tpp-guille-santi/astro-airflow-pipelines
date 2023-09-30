@@ -9,5 +9,4 @@ altair<5
 firebase-admin
 pydantic==1.10.0
 httpx==0.24.1
-tensorflow-cpu==2.12.0
-tensorflow-directml-plugin==0.4.0.dev230202
+tensorflow-cpu==2.14.0
