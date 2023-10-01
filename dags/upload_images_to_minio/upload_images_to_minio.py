@@ -26,7 +26,7 @@ default_args = {
 @dag(
     default_args=default_args,
     tags=['train_model', 'cnn', 'pipeline', 'cnn-pipeline'],
-    schedule_interval='0 6 * * *',
+    schedule_interval=None,
     catchup=False,
     max_active_runs=1,
 )
