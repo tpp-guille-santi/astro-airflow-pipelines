@@ -173,8 +173,13 @@ class FirebaseRepository:
 
     def upload_model(self, model: keras.Model) -> bool:
         existing_model = ml.get_model(model_id=self.MODEL_ID)
+        converter = tensorflow.lite.TFLiteConverter.from_keras_model(model)
+        converter.optimizations = [tensorflow.lite.Optimize.DEFAULT]
+        quantized_tflite_model = converter.convert()
+        with open('temp_model.tflite', 'wb') as f:
+            f.write(quantized_tflite_model)
         existing_model.model_format = ml.TFLiteFormat(
-            model_source=ml.TFLiteGCSModelSource.from_keras_model(model)
+            model_source=ml.TFLiteGCSModelSource.from_tflite_model_file('temp_model.tflite')
         )
         ml.update_model(existing_model)
 
