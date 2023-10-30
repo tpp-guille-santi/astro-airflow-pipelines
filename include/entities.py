@@ -19,6 +19,12 @@ class Material(BaseModel):
     enabled: bool
 
 
+class MaterialUpdate(BaseModel):
+    name: str | None = None
+    order: int | None = None
+    enabled: bool | None = None
+
+
 class ImagesCountResponse(BaseModel):
     count: int
 

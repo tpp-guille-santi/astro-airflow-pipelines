@@ -11,13 +11,17 @@ from firebase_admin import credentials
 from firebase_admin import ml
 from minio import Minio
 from PIL import Image as PilImage
+from pillow_heif import register_heif_opener
 from tensorflow import keras
 
 from include.entities import Image
 from include.entities import ImagesCountResponse
 from include.entities import Material
+from include.entities import MaterialUpdate
 from include.entities import MLModel
 from include.settings import settings
+
+register_heif_opener()
 
 LOGGER = logging.getLogger(__name__)
 
@@ -33,8 +37,7 @@ class BackendRepository:
             if response.status_code == 200:
                 data = response.json()
                 return [Image(**item) for item in data]
-            else:
-                response.raise_for_status()
+            response.raise_for_status()
 
     def get_new_images(self) -> list[Image]:
         with httpx.Client() as client:
@@ -43,8 +46,7 @@ class BackendRepository:
             if response.status_code == 200:
                 data = response.json()
                 return [Image(**item) for item in data]
-            else:
-                response.raise_for_status()
+            response.raise_for_status()
 
     def get_all_materials(self) -> list[Material]:
         with httpx.Client() as client:
@@ -53,8 +55,7 @@ class BackendRepository:
             if response.status_code == 200:
                 data = response.json()
                 return [Material(**item) for item in data]
-            else:
-                response.raise_for_status()
+            response.raise_for_status()
 
     def get_enabled_materials(self) -> dict[str, Material]:
         with httpx.Client() as client:
@@ -63,8 +64,7 @@ class BackendRepository:
             if response.status_code == 200:
                 data = response.json()
                 return {item['name']: Material(**item) for item in data}
-            else:
-                response.raise_for_status()
+            response.raise_for_status()
 
     def get_latest_material(self) -> Material:
         with httpx.Client() as client:
@@ -73,8 +73,7 @@ class BackendRepository:
             if response.status_code == 200:
                 data = response.json()
                 return Material(**data)
-            else:
-                response.raise_for_status()
+            response.raise_for_status()
 
     def create_material(self, material: Material) -> Material:
         with httpx.Client() as client:
@@ -83,8 +82,16 @@ class BackendRepository:
             if response.status_code == 201:
                 data = response.json()
                 return Material(**data)
-            else:
-                response.raise_for_status()
+            response.raise_for_status()
+
+    def enable_material(self, material_id: str, material: MaterialUpdate) -> None:
+        with httpx.Client() as client:
+            url = f'{self.base_url}/materials/{material_id}'
+            response = client.patch(url, json=material.dict())
+            if response.status_code == 200:
+                data = response.json()
+                return Material(**data)
+            response.raise_for_status()
 
     def get_new_images_count(self) -> int:
         with httpx.Client() as client:
@@ -94,8 +101,7 @@ class BackendRepository:
                 data = response.json()
                 images_count = ImagesCountResponse(**data)
                 return images_count.count
-            else:
-                response.raise_for_status()
+            response.raise_for_status()
 
     def download_image(self, image: Image) -> io.BytesIO:
         with httpx.Client() as client:
@@ -105,8 +111,7 @@ class BackendRepository:
             if response.status_code == 200:
                 image_data = response.content
                 return io.BytesIO(image_data)
-            else:
-                response.raise_for_status()
+            response.raise_for_status()
 
     def mark_image_as_downloaded(self, image: Image) -> Image:
         downloaded_image = Image(downloaded=True)
@@ -117,8 +122,7 @@ class BackendRepository:
             if response.status_code == 200:
                 data = response.json()
                 return Image(**data)
-            else:
-                response.raise_for_status()
+            response.raise_for_status()
 
     def get_latest_model(self):
         with httpx.Client() as client:
@@ -127,8 +131,7 @@ class BackendRepository:
             if response.status_code == 200:
                 data = response.json()
                 return MLModel(**data)
-            else:
-                response.raise_for_status()
+            response.raise_for_status()
 
     def create_model(self, model: MLModel):
         with httpx.Client() as client:
@@ -137,8 +140,7 @@ class BackendRepository:
             if response.status_code == 201:
                 data = response.json()
                 return MLModel(**data)
-            else:
-                response.raise_for_status()
+            response.raise_for_status()
 
 
 class TelegramRepository:
@@ -159,8 +161,7 @@ class TelegramRepository:
             if response.status_code == 200:
                 data = response.json()
                 return data
-            else:
-                response.raise_for_status()
+            response.raise_for_status()
 
 
 class FirebaseRepository:

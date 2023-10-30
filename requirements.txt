@@ -9,4 +9,5 @@ altair<5
 firebase-admin
 pydantic==1.10.0
 httpx==0.24.1
-tensorflow-cpu==2.13.0
+tensorflow-cpu==2.14.0
+pillow_heif==0.13.0

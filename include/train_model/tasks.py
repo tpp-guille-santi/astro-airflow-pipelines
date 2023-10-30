@@ -3,7 +3,7 @@ from time import time
 
 from airflow.decorators import task
 
-from include.entities import Image
+from include.entities import Image, MaterialUpdate
 from include.entities import Material
 from include.entities import MLModel
 from include.model import train_and_evaluate_model
@@ -48,13 +48,20 @@ def create_model(minio_repository: MinioRepository):
     return accuracy
 
 
+@task()
+def enable_material(backend_repository: BackendRepository, material_id):
+    if not material_id:
+        raise Exception
+    material = MaterialUpdate(enabled=True)
+    backend_repository.update_material(material_id, material)
+
 @task.short_circuit
-def validate_model(backend_repository: BackendRepository, **context):
+def validate_model(backend_repository: BackendRepository, threshold: float, **context):
     value = context['ti'].xcom_pull(key='return_value', task_ids='create_model')
     print('New Accuracy: ', value)
     material = backend_repository.get_latest_model()
     print('Old Accuracy: ', material.accuracy)
-    return value > material.accuracy
+    return value > (material.accuracy * threshold)
 
 
 @task
