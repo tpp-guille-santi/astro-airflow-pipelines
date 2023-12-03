@@ -1,3 +1,7 @@
+# recisnap-pipelines
+
+Airflow project to execute Recisnap pipelines to train our CNN and create new materials.
+
 How to use this repository
 ==========================
 
